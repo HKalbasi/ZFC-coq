@@ -17,6 +17,7 @@
 *.v.d
 *.vio
 *.vo
+*.crashcoqide
 .coq-native/
 .csdp.cache
 .lia.cache

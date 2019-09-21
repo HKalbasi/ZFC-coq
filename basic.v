@@ -1,25 +1,11 @@
 Require Import definition.
 
-Lemma subset_self : forall x , x ⊆ x.
-Proof.
-  intros.
-  unfold subset.
-  auto.
-Qed.
-
 Lemma subset_equality : forall (x y : Zset), x ⊆ y -> y ⊆ x -> x = y.
 Proof.
   intros.
   apply ax_extensionality.
   intros.
   split; auto.
-Qed.
-
-Lemma subset_trans : forall x y z , x ⊆ y -> y ⊆ z -> x ⊆ z.
-Proof.
-  intros.
-  unfold subset; intros.
-  auto.
 Qed.
 
 Lemma set_builder_subset : 
@@ -63,24 +49,14 @@ Proof.
   apply set_builder_property.
 Qed.
 
-Lemma empty_set_subset : forall x , Ø ⊆ x.
-Proof.
-  unfold subset; intros.
-  apply empty_set_empty in H.
-  contradiction.
-Defined.
-
-Hint Resolve empty_set_empty empty_set_subset : set.
-
-Lemma empty_set_unique : 
-  forall x , ( forall y , y ∈ x -> False ) -> x = Ø.
+Lemma subset_of_empty : forall x , x ⊆ Ø -> Ø = x.
 Proof.
   intros.
   apply subset_equality.
   unfold subset; intros.
-  apply H in H0.
+  apply empty_set_empty in H0.
   contradiction.
-  auto with set.
+  auto.
 Qed.
 
 Lemma union_set_subset : forall x y , x ∈ y -> x ⊆ union_set y.
@@ -153,39 +129,102 @@ Proof.
   auto.
 Qed.
 
-Lemma set_of_one_def : forall x y , x ∈ set_of_one y -> x = y.
+Lemma intersect_def : forall x y z , z ∈ x ⋂ y <-> z ∈ x /\ z ∈ y.
 Proof.
   intros.
+  unfold intersect.
+  constructor; intros.
+  constructor.
+  apply set_builder_subset in H.
+  auto.
+  apply set_builder_property in H.
+  auto.
+  apply set_builder_def; destruct H; auto.  
+Qed.
+
+Lemma set_of_one_def : forall x y , x ∈ set_of_one y <-> x = y.
+Proof.
+  intros.
+  split; intros.
   unfold set_of_one in H.
   apply set_of_two_members in H.
   tauto.
+  destruct H.
+  apply set_of_two_left.
 Qed.
 
-Ltac set_solver_inner :=
-  repeat match goal with
+Lemma extensionality_reverse : 
+  forall x y , x <> y -> exists z , z ∈ x <-> z ∉ y.
+Proof.
+  intros.
+  apply Classical_Prop.NNPP.
+  unfold not.
+  intros.
+  apply H.
+  apply ax_extensionality.
+Admitted.
+
+Ltac set_solver_step :=
+  match goal with
   | [ H : False |- _ ] => contradiction
   | [ H : ?P |- ?P ] => exact H
+  | [ A : ?P , B : ~ ?P |- _ ] => contradiction
   | [ |- True ] => constructor
-  | [ |- ?x ∈ set_of_one ?x ] => apply set_of_two_left
+  | [ |- _ ∈ set_of_one _ ] => apply set_of_one_def
+  | [ H : ~ _ ∈ set_of_one _ |- _ ] => 
+    apply (not_iff_compat (set_of_one_def _ _)) in H
   | [ H : _ ∈ Ø |- _ ] => apply empty_set_empty in H
   | [ H : _ ∈ set_of_one _ |- _ ] => apply set_of_one_def in H
+  | [ H : _ /\ _ |- _ ] => destruct H
+  | [ H : ~ (_ \/ _) |- _ ] => apply Classical_Prop.not_or_and in H
+  | [ H : ~ (_ /\ _) |- _ ] => apply Classical_Prop.not_and_or in H
   | [ |- forall _, _ ] => intros  
-  | [ |- _ <-> _ ] => constructor 
-  | [ |- _ = _ ] => apply subset_equality
+  | [ |- _ /\ _ ] => constructor
+  | [ |- _ \/ _ ] => Classical_Prop.classical_left
+  | [ |- _ <-> _ ] => constructor
   | [ |- _ ⊆ _ ] => unfold subset; intros
   | [ |- _ ∈ _ ⋃ _ ] => apply union_def
   | [ H : _ ∈ _ ⋃ _ |- _ ] => apply union_def in H
+  | [ H : ~ _ ∈ _ ⋃ _ |- _ ]
+    => apply (not_iff_compat (union_def _ _ _)) in H
+  | [ |- _ ∈ _ ⋂ _ ] => apply intersect_def
+  | [ H : _ ∈ _ ⋂ _ |- _ ] => apply intersect_def in H
+  | [ H : ~ _ ∈ _ ⋂ _ |- _ ]
+    => apply (not_iff_compat (intersect_def _ _ _)) in H  
+  | [ H : _ ⊆ Ø |- _ ] => apply subset_of_empty in H
   | [ H : _ = _ |- _ ] => destruct H
   | [ H : _ \/ _ |- _ ] => destruct H  
+  | [ |- _ = _ ] => apply subset_equality
+  | [ H : _ <> _ |- _ ] => apply extensionality_reverse in H
   end.
 
-Ltac set_solver :=
-  set_solver_inner;
-  try match goal with
-  |[ |- _ \/ _ ] => 
-    try (left; set_solver; fail);
-    try (right; set_solver; fail)
-  end.
+Ltac set_solver := repeat set_solver_step.
+
+Lemma subset_self : forall x , x ⊆ x.
+Proof.
+  set_solver.
+Qed.
+
+Lemma subset_trans : forall x y z , x ⊆ y -> y ⊆ z -> x ⊆ z.
+Proof.
+  set_solver.
+  apply H0.
+  apply H.
+  auto.
+Qed.
+
+Lemma empty_set_subset : forall x , Ø ⊆ x.
+Proof.
+  set_solver.
+Qed.
+
+Lemma empty_set_unique : 
+  forall x , ( forall y , y ∈ x -> False ) -> x = Ø.
+Proof.
+  set_solver.
+  pose ( H z H0 ).
+  contradiction.
+Qed.
 
 Lemma union_empty : forall x , x ⋃ Ø = x.
 Proof.
@@ -197,9 +236,36 @@ Proof.
   set_solver.
 Qed.
 
-Hint Resolve union_empty union_comm union_def : set.
-
 Lemma union_assoc : forall a b c , a ⋃ (b ⋃ c) = (a ⋃ b) ⋃ c.
+Proof.
+  set_solver.
+Qed.
+
+Hint Resolve union_empty union_comm union_def union_assoc : set.
+
+Lemma intersect_empty : forall x , x ⋂ Ø = Ø.
+Proof.
+  set_solver.
+Qed.
+
+Lemma intersect_comm : forall a b , a ⋂ b = b ⋂ a.
+Proof.
+  set_solver.
+Qed.
+
+Lemma intersect_assoc : forall a b c , a ⋂ (b ⋂ c) = (a ⋂ b) ⋂ c.
+Proof.
+  set_solver.
+Qed.
+
+Hint Resolve intersect_empty intersect_comm intersect_def intersect_assoc : set.
+
+Lemma intersect_in_union : forall a b c , (a ⋂ b) ⋃ ( a ⋂ c ) = a ⋂ ( b ⋃ c ).
+Proof.
+  set_solver.
+Qed.
+
+Lemma union_in_intersect : forall a b c , (a ⋃ b) ⋂ ( a ⋃ c ) = a ⋃ ( b ⋂ c ).
 Proof.
   set_solver.
 Qed.
@@ -215,6 +281,16 @@ Proof.
 Qed.
 
 Lemma set_builder_three : forall x a b c, x ∈ { a , b , c } <-> x = a \/ x = b \/ x = c.
+Proof.
+  set_solver.
+Qed.
+
+Lemma set_builder_comm : forall a b , { a, b } = { b, a }.
+Proof.
+  set_solver.
+Qed.
+
+Lemma set_builder_sym : forall a , { a, a } = { a }.
 Proof.
   set_solver.
 Qed.

@@ -1,8 +1,11 @@
+Require Export Coq.Logic.Classical_Prop.
+
 Axiom Zset : Prop.
 
 Axiom Zmember : Zset -> Zset -> Prop.
 
 Infix "∈" := Zmember (at level 75).
+Notation "x ∉ y" := (~ x ∈ y) (at level 75).
 
 Axiom ax_exist : Zset.
 
@@ -50,3 +53,7 @@ Notation "{ x , .. , y }" := (union (set_of_one x) .. (union (set_of_one y) Ø) 
 Definition subset ( x y : Zset ) := forall z : Zset , z ∈ x -> z ∈ y.
 
 Infix "⊆" := subset (at level 75).
+
+Definition intersect ( x y : Zset ) := { z ∈ x | z ∈ y }.
+
+Infix "⋂" := intersect ( at level 45 ).
