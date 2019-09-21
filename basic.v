@@ -153,60 +153,68 @@ Proof.
   auto.
 Qed.
 
-Lemma union_empty : forall x , x ⋃ Ø = x.
+Lemma set_of_one_def : forall x y , x ∈ set_of_one y -> x = y.
 Proof.
   intros.
-  apply ax_extensionality.
-  intros; split; intros.
-  apply union_def in H.
-  case H; auto.
-  intros.
-  apply False_ind.
-  eapply empty_set_empty.
-  eauto.
-  apply union_def.
-  auto.
+  unfold set_of_one in H.
+  apply set_of_two_members in H.
+  tauto.
+Qed.
+
+Ltac set_solver_inner :=
+  repeat match goal with
+  | [ H : False |- _ ] => contradiction
+  | [ H : ?P |- ?P ] => exact H
+  | [ |- True ] => constructor
+  | [ |- ?x ∈ set_of_one ?x ] => apply set_of_two_left
+  | [ H : _ ∈ Ø |- _ ] => apply empty_set_empty in H
+  | [ H : _ ∈ set_of_one _ |- _ ] => apply set_of_one_def in H
+  | [ |- forall _, _ ] => intros  
+  | [ |- _ <-> _ ] => constructor 
+  | [ |- _ = _ ] => apply subset_equality
+  | [ |- _ ⊆ _ ] => unfold subset; intros
+  | [ |- _ ∈ _ ⋃ _ ] => apply union_def
+  | [ H : _ ∈ _ ⋃ _ |- _ ] => apply union_def in H
+  | [ H : _ = _ |- _ ] => destruct H
+  | [ H : _ \/ _ |- _ ] => destruct H  
+  end.
+
+Ltac set_solver :=
+  set_solver_inner;
+  try match goal with
+  |[ |- _ \/ _ ] => 
+    try (left; set_solver; fail);
+    try (right; set_solver; fail)
+  end.
+
+Lemma union_empty : forall x , x ⋃ Ø = x.
+Proof.
+  set_solver.
 Qed.
 
 Lemma union_comm : forall a b , a ⋃ b = b ⋃ a.
 Proof.
-  assert ( forall a b , a ⋃ b ⊆ b ⋃ a ).
-  unfold subset; intros.
-  apply union_def.
-  apply union_def in H.
-  case H; auto.
-  intros; apply subset_equality; auto.
+  set_solver.
 Qed.
 
 Hint Resolve union_empty union_comm union_def : set.
 
 Lemma union_assoc : forall a b c , a ⋃ (b ⋃ c) = (a ⋃ b) ⋃ c.
 Proof.
-  intros; apply subset_equality; unfold subset; intros.
-  - apply union_def.
-    apply union_def in H.
-    case H; intros.
-    + left; apply union_def; auto.
-    + apply union_def in H0; case H0; intros.
-      * left; apply union_def; auto.
-      * right; auto.
-  - apply union_def.
-    apply union_def in H.
-    case H; intros.
-    + apply union_def in H0; case H0; intros.
-      * left; auto.
-      * right; apply union_def; auto.
-    + right; apply union_def; auto.
+  set_solver.
 Qed.
-  
-Lemma set_builder_one : forall x y, x ∈ { y } <-> x = y.
+
+Lemma set_builder_one : forall x a, x ∈ { a } <-> x = a.
 Proof.
-  intros.
-  unfold set_of_one.
-  rewrite union_empty.
-  split; intros.  
-  apply set_of_two_members in H.
-  case H; auto.
-  destruct H.
-  apply set_of_two_left.
+  set_solver.
+Qed.
+
+Lemma set_builder_two : forall x a b, x ∈ { a , b } <-> x = a \/ x = b.
+Proof.
+  set_solver.
+Qed.
+
+Lemma set_builder_three : forall x a b c, x ∈ { a , b , c } <-> x = a \/ x = b \/ x = c.
+Proof.
+  set_solver.
 Qed.
